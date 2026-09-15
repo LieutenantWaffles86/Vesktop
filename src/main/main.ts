@@ -7,6 +7,7 @@
 import "./cli";
 import "./updater";
 import "./ipc";
+import "./idle";
 import "./userAssets";
 import "./vesktopProtocol";
 

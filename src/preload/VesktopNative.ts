@@ -108,5 +108,13 @@ export const VesktopNative = {
             ipcRenderer.on(IpcEvents.IPC_COMMAND, (_, message) => cb(message));
         },
         respond: (response: IpcResponse) => ipcRenderer.send(IpcEvents.IPC_COMMAND, response)
+    },
+    powerMonitor: {
+        /** Real OS-level idle time in milliseconds, sourced from Electron's powerMonitor. */
+        getSystemIdleTime: () => invoke<number>(IpcEvents.POWER_MONITOR_GET_SYSTEM_IDLE_TIME),
+        onResume: (cb: () => void) => ipcRenderer.on(IpcEvents.POWER_MONITOR_RESUME, () => cb()),
+        onSuspend: (cb: () => void) => ipcRenderer.on(IpcEvents.POWER_MONITOR_SUSPEND, () => cb()),
+        onLockScreen: (cb: () => void) => ipcRenderer.on(IpcEvents.POWER_MONITOR_LOCK_SCREEN, () => cb()),
+        onUnlockScreen: (cb: () => void) => ipcRenderer.on(IpcEvents.POWER_MONITOR_UNLOCK_SCREEN, () => cb())
     }
 };

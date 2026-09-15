@@ -40,6 +40,12 @@ export interface Settings {
 
     spellCheckLanguages?: string[];
 
+    systemIdle?: {
+        enabled: boolean;
+        /** Minutes of real OS-level inactivity before Discord status switches to idle. 0 = never auto-idle. */
+        timeoutMinutes: number;
+    };
+
     audio?: {
         workaround?: boolean;
 

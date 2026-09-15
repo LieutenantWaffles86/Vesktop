@@ -29,5 +29,9 @@ export const DefaultVesktopSettings: Settings = {
     splashPixelated: false,
     webRTCIPHandlingPolicy: "default",
     appBadge: true,
-    transparencyOption: "none"
+    transparencyOption: "none",
+    systemIdle: {
+        enabled: true,
+        timeoutMinutes: 10
+    }
 };

@@ -18,6 +18,7 @@ import { DeveloperOptionsButton } from "./DeveloperOptions";
 import { DiscordBranchPicker } from "./DiscordBranchPicker";
 import { NotificationBadgeToggle } from "./NotificationBadgeToggle";
 import { OutdatedVesktopWarning } from "./OutdatedVesktopWarning";
+import { SystemIdleSettings } from "./SystemIdleSettings";
 import { UserAssetsButton } from "./UserAssets";
 import { VesktopSettingsSwitch } from "./VesktopSettingsSwitch";
 import { WindowsTransparencyControls } from "./WindowsTransparencyControls";
@@ -122,7 +123,8 @@ const SettingsOptions: Record<string, Array<BooleanSetting | SettingsComponent>>
             key: "disableSmoothScroll",
             title: "Disable smooth scrolling",
             description: "Disables smooth scrolling"
-        }
+        },
+        SystemIdleSettings
     ],
     Notifications: [
         NotificationBadgeToggle,
