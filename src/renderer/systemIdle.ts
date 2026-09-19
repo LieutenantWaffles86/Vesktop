@@ -12,25 +12,33 @@ import { Settings } from "./settings";
 
 const CHECK_INTERVAL_MS = 10_000;
 
-/** Whether we last told Discord it should be idle, based on real OS idle time. */
-let isSystemIdle = false;
-/** Guards against reacting to our own dispatch inside the IDLE subscriber below. */
-let selfDispatching = false;
+/** Whether the OS reports no input for longer than the configured timeout. */
+let systemIdle = false;
+/** The idle state Discord currently holds, tracked by observing every IDLE dispatch. */
+let discordIdle = false;
 
 function getSystemIdleSettings() {
     return Settings.store.systemIdle ?? { enabled: false, timeoutMinutes: 10 };
 }
 
-function dispatchIdle(idle: boolean) {
-    if (idle === isSystemIdle) return;
+/**
+ * Discord derives its idle state from window focus alone, so it drifts from the real
+ * OS idle state in both directions: it idles as soon as Vesktop is unfocused, and it
+ * stays online while the window is focused but the user is away. Re-assert the OS
+ * state whenever the two disagree.
+ */
+function syncIdleState() {
+    if (discordIdle === systemIdle) return;
 
-    isSystemIdle = idle;
-    selfDispatching = true;
-    try {
-        FluxDispatcher.dispatch({ type: "IDLE", idle });
-    } finally {
-        selfDispatching = false;
-    }
+    discordIdle = systemIdle;
+    FluxDispatcher.dispatch({ type: "IDLE", idle: systemIdle });
+}
+
+function setSystemIdle(idle: boolean) {
+    if (!getSystemIdleSettings().enabled) return;
+
+    systemIdle = idle;
+    syncIdleState();
 }
 
 async function checkSystemIdle() {
@@ -40,9 +48,8 @@ async function checkSystemIdle() {
     try {
         const idleMs = await VesktopNative.powerMonitor.getSystemIdleTime();
         const timeoutMs = timeoutMinutes * 60_000;
-        const shouldBeIdle = timeoutMs > 0 && idleMs >= timeoutMs;
 
-        dispatchIdle(shouldBeIdle);
+        setSystemIdle(timeoutMs > 0 && idleMs >= timeoutMs);
     } catch (e) {
         VesktopLogger.error("Failed to check system idle time", e);
     }
@@ -52,22 +59,18 @@ onceReady.then(() => {
     setInterval(checkSystemIdle, CHECK_INTERVAL_MS);
     checkSystemIdle();
 
-    // Discord's own idle detection only tracks window focus/visibility, so it will
-    // frequently report idle:true just because Vesktop lost focus even though the
-    // user is still actively using their computer. Correct those false positives
-    // using the real OS idle time we have from Electron's powerMonitor.
     FluxDispatcher.subscribe("IDLE", (e: { idle: boolean }) => {
-        if (selfDispatching || !getSystemIdleSettings().enabled) return;
-        if (e.idle && !isSystemIdle) dispatchIdle(false);
+        discordIdle = Boolean(e.idle);
+        if (!getSystemIdleSettings().enabled) return;
+
+        // Deferred so we never dispatch from inside Discord's own dispatch cycle.
+        // syncIdleState only dispatches on divergence, so our own events settle here.
+        setTimeout(syncIdleState, 0);
     });
 
     // React instantly to OS-level power events instead of waiting for the next poll.
     VesktopNative.powerMonitor.onResume(checkSystemIdle);
     VesktopNative.powerMonitor.onUnlockScreen(checkSystemIdle);
-    VesktopNative.powerMonitor.onSuspend(() => {
-        if (getSystemIdleSettings().enabled) dispatchIdle(true);
-    });
-    VesktopNative.powerMonitor.onLockScreen(() => {
-        if (getSystemIdleSettings().enabled) dispatchIdle(true);
-    });
+    VesktopNative.powerMonitor.onSuspend(() => setSystemIdle(true));
+    VesktopNative.powerMonitor.onLockScreen(() => setSystemIdle(true));
 });
